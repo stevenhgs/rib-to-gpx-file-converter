@@ -178,8 +178,8 @@ The site contained the following information about GPS data:
 | 4 bytes   | 4 bytes   | 2 bytes  | 2 bytes | 1 bytes    | 2 bytes |
 
 So, maybe here there were also four bytes used for the latitude and four bytes for the longitude.
-I knew that the latitude should be around `46.126030` and the longitude around of `7.312903`.
-The value at index `7` is `46` for all the slices and the value at index `11` is `7`.
+I knew that the latitude should be around `46.126030` and the longitude around `7.312903`.
+The value at index `7` is `46` and the value at index `11` is `7` for all the three slices.
 So this could mean that the values from index `7` to `10` represent the latitude 
 and the values from index `11` to `14` represent the longitude.  
 
