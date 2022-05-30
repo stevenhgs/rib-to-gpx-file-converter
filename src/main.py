@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import BinaryIO
 from pathlib import Path
-
+import matplotlib.pyplot as plt
 
 def get_raw_track_points(file: BinaryIO, mode: int) -> list[list[int]]:
     """
@@ -200,6 +200,24 @@ def convert_rib_to_gpx_file(input_file_path_string: str | None, mode_string: str
     print('writing gpx data to output file ...')
     output_file.write(gpx_text)
     print('Done.')
+
+    nbs = [i for i in range(len(raw_track_points))]
+    size = 1000
+
+    _, (ax0, ax1) = plt.subplots(2)
+    height = [x[19] for x in raw_track_points]
+    descent = [x[20] for x in raw_track_points]
+
+    ax0.plot(nbs[:size], height[:size])
+    plt.setp(ax0, xlabel='slice index', ylabel='byte value', title='byte at index 19')
+    ax0.set_xlim([0, size])
+
+    ax1.plot(nbs[:size], descent[:size])
+    plt.setp(ax1, xlabel='slice index', ylabel='byte value', title='byte at index 20')
+    ax1.set_xlim([0, size])
+
+    plt.subplots_adjust(hspace=0.5)
+    plt.show()
 
 
 if __name__ == "__main__":
