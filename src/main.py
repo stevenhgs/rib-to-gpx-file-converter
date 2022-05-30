@@ -3,20 +3,30 @@ from typing import BinaryIO
 from pathlib import Path
 
 
-def get_raw_track_points(file: BinaryIO) -> list[list[int]]:
+def get_raw_track_points(file: BinaryIO, mode: int) -> list[list[int]]:
     """
-    This method assumes the given file is a .rib file of the snow2 goggles of Recon Instruments.
+    This method assumes the given file is a .rib file of goggles of Recon Instruments.
     This method will first put the data of the file in a bytearray.
-    This methode will then split the bytes in the bytearray into track points.
-    It seems that these track points start from the 14th index and are each 32 bytes long.
+    This method will then split the bytes in the bytearray into track points.
+    This method assumes mode is either 1 or 2.
+    Mode 1: track points start from the 14th index and are each 32 bytes long.
+    Mode 2: track points start from the 9th index and are each 20 bytes long.
     """
+    if mode == 1:
+        start_index = 14
+        bytes_per_track_point = 32
+        padding = []
+    else:  # mode 2
+        start_index = 9
+        bytes_per_track_point = 20
+        padding = [-1, -1, -1, -1]  # padding is added to mode 2 for missing values
+
     byte_array = bytearray(file.read())
-    # start reading from the 14th byte
-    index = 14
+    base_index = start_index
     raw_track_points = []
-    while index + 32 <= len(byte_array):
-        raw_track_points.append([byte_array[index + i] for i in range(32)])
-        index += 32
+    while base_index + bytes_per_track_point <= len(byte_array):
+        raw_track_points.append(padding + [byte_array[base_index + i] for i in range(bytes_per_track_point)])
+        base_index += bytes_per_track_point
     return raw_track_points
 
 
@@ -57,10 +67,10 @@ def get_datetime_from_four_bytes(values: tuple[int, int, int, int]) -> datetime:
 def get_track_points_from_raw_track_points(raw_track_points: list[list[int]]) -> list[dict]:
     """
     This method converts a list of raw track points into a list of track points and returns this list of track points.
-    A raw track point is a list of 32 integer values with each integer value between 0 and 255.
+    A raw track point is a list of 24 or 32 integer values with each integer value between 0 and 255.
     A track point is a dictionary with the following (key, value type) pairs:
     ('hour', int), ('minute', int), ('second', int), ('latitude', float), ('longitude', float), ('speed', float),
-    ('elevation', int), ('year', int), ('month', int), ('day', int).
+    ('elevation', int), ('year', int | None), ('month', int | None), ('day', int | None).
     """
     track_points = []
     for raw_track_point in raw_track_points:
@@ -86,10 +96,15 @@ def get_track_points_from_raw_track_points(raw_track_points: list[list[int]]) ->
         # get year, month and day
         unix_time_values = (raw_track_point[0], raw_track_point[1], raw_track_point[2], raw_track_point[3])
 
-        date_time = get_datetime_from_four_bytes(unix_time_values)
-        data['year'] = date_time.year
-        data['month'] = date_time.month
-        data['day'] = date_time.day
+        if unix_time_values[0] > -1:  # case that Unix time was present in raw track point
+            date_time = get_datetime_from_four_bytes(unix_time_values)
+            data['year'] = date_time.year
+            data['month'] = date_time.month
+            data['day'] = date_time.day
+        else:  # case that Unix time was not present in raw track point
+            data['year'] = None
+            data['month'] = None
+            data['day'] = None
 
         track_points += [data]
     return track_points
@@ -100,7 +115,7 @@ def generate_gpx_text(track_points: list[dict]) -> str:
     This method creates a gpx text from the given list of track points and returns this gpx text.
     A track point is a dictionary with the following (key, value type) pairs:
     ('hour', int), ('minute', int), ('second', int), ('latitude', float), ('longitude', float), ('speed', float),
-    ('elevation', int), ('year', int), ('month', int), ('day', int).
+    ('elevation', int), ('year', int | None), ('month', int | None), ('day', int | None).
     First a header is created and added to the gpx text.
     Then for every track point in track_points a <trkpt> tag is added to the gpx text.
     At the end a footer is added to the gpx text.
@@ -138,20 +153,31 @@ def generate_gpx_text(track_points: list[dict]) -> str:
     return gpx_text
 
 
-def convert_rib_to_gpx_file(input_file_path_string: str, output_file_path_string: str | None = None):
+def convert_rib_to_gpx_file(input_file_path_string: str | None, mode_string: str | None, output_file_path_string: str | None = None) -> None:
     """
     This method assumes the given input_file is a .rib file of the snow2 goggles of Recon Instruments.
     This method will the convert the given input_file into a .gpx file with an output_file_name if it is given.
     Otherwise, the name of the .rib file will be given to the generated .gpx file.
     """
     if input_file_path_string is None:
-        print('please provide an input file path')
+        print('Please provide an input file path.')
+        return
+    if (mode_string is None) or (not mode_string.isdigit()) or (mode_string != '1' and mode_string != '2'):
+        print('Please provide a mode.')
+        print('The mode should be either 1 or 2.')
+        print('Known modes: ')
+        print('Mode 1: Snow2 goggles')
+        print('Mode 2: Zeal Optics Transcend')
+        return
+
+    mode = int(mode_string)
     input_file_path = Path(input_file_path_string)
     with open(input_file_path, 'rb') as input_file:
-        print('getting raw track points ...')
-        raw_track_points = get_raw_track_points(input_file)
+        print(f'getting raw track points in mode {mode} ...')
+        raw_track_points = get_raw_track_points(input_file, mode)
         if len(raw_track_points) < 2:
             print('File did not contain any track points.')
+            return
     raw_track_points.pop(0)  # first track point seems off
     print('getting track points from raw track points ...')
     track_points = get_track_points_from_raw_track_points(raw_track_points)
@@ -181,5 +207,6 @@ if __name__ == "__main__":
     parser = ArgumentParser('rib_to_gpx_converter')
     parser.add_argument('--in', help='The input file path', type=str)
     parser.add_argument('--out', help='The output file path', type=str)
+    parser.add_argument('--mode', help='Mode to parse the .rib file', type=str)
     args = vars(parser.parse_args())
-    convert_rib_to_gpx_file(args['in'], args['out'])
+    convert_rib_to_gpx_file(args['in'], args['mode'], args['out'])
