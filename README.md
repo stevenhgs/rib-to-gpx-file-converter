@@ -1,4 +1,4 @@
-# .rib to .gpx file converter for Recon Instruments snow2 goggles
+# .rib to .gpx file converter for Recon Instruments smartglasses
 ## Introduction
 [Recon Instruments](https://en.wikipedia.org/wiki/Recon_Instruments) developed smartglasses. [Snow2](https://vandrico.com/wearables/device/recon-instruments-snow2.html#:~:text=About%20Snow2,designed%20for%20skiing%20and%20snowboarding.)
 was one of these smartglasses produced by Recon instruments. By wearing these goggles you could track your location while skiing or snowboarding.
