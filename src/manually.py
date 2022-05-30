@@ -10,8 +10,10 @@ this file can be used.
 # for example: output_file_path_string = '../output/out.gpx'
 input_file_path_string = '../example/DAY90.rib'
 output_file_path_string = None
+# mode string should be either '1' or '2' depending on what goggles were used to track the activity
+mode_string = '1'
 
 
 # DO NOT CHANGE THIS CODE
 if __name__ == "__main__":
-    convert_rib_to_gpx_file(input_file_path_string, output_file_path_string)
+    convert_rib_to_gpx_file(input_file_path_string, output_file_path_string, mode_string)
