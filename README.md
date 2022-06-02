@@ -31,6 +31,11 @@ Mode `1`:
 Mode `2`:  
 * Zeal Optics Transcend
 
+(Note: goggles which create .rib files which have to be converted in mode `2`
+do not have data containing the date when the activity took place. 
+So, when converting these files to .gpx files the date when the file is converted 
+will be used as the date when the activity took place.)
+
 ### convert .rib to .gpx in a custom output path
 If you want to create a custom output path, you have to use the `--out` flag:
 
@@ -244,6 +249,7 @@ The elevation can be calculated using the following formula:
 ```python
 elevation  =  slice[17] * 256 + slice[18]
 ```
+
 For `Slice 1` this results in `1927`, which seems close to the expected `1833` meters.
 In a similar way the two bytes for speed are found.
 
@@ -280,6 +286,24 @@ The bottom graph is also a bit smoother.
 This leads me to believe that the bytes at index `19` and index `20` represent descent.
 However, after some testing I cannot figure out how to map these values to values in meters.
 
+#### Temperature
+The smartglasses also contain a temperature sensor. 
+So, there could be data representing the measured temperature.
+After finding [this post](https://stackoverflow.com/questions/72362354/how-to-reverse-engineer-a-rib-file/72395748#72395748)
+and with the help of the creator of that post it was found that the byte at index `21` contains the data for the temperature.  
+
+The temperature in degrees Celsius can be calculated using the following formula:
+
+```python
+temperature  =  slice[21] - 40
+```
+
+So the meaning of the byte at index `21` is found:  
+
+| Index |   Meaning   | Slice 1  | Slice 2 | Slice 3 |
+|:-----:|:-----------:|----------|---------|---------|
+|  21   | temperature | 40       | 40      | 40      |
+
 #### Result
 The meaning of the values of the following indices are found:
 
@@ -306,7 +330,7 @@ The meaning of the values of the following indices are found:
 |  18   |  elevation  | 135      | 135     | 135     |
 |  19   | descent (?) | 160      | 160     | 160     |
 |  20   | descent (?) | 230      | 228     | 225     |
-|  21   |      ?      | 40       | 40      | 40      |
+|  21   | temperature | 40       | 40      | 40      |
 |  22   |      ?      | 16       | 16      | 16      |
 |  23   |      ?      | 13       | 13      | 13      |
 |  24   |  delimiter  | 255      | 255     | 255     |
@@ -318,13 +342,19 @@ The meaning of the values of the following indices are found:
 |  30   |  delimiter  | 255      | 255     | 255     |
 |  31   |  delimiter  | 255      | 255     | 255     |
 
-As you can see the meaning of the values of indexes from `19` to `23` are still not found. 
+As you can see the meaning of the values of indices `22` and `23` are still not found. 
+Maybe these bytes are used as a [checksum](https://en.wikipedia.org/wiki/Checksum).
 However, the data found until now is sufficient to generate a valid .gpx file.
 
 ### Generating a .gpx file
 Now that the meaning of the values is found the .gpx file can be generated.
-This is simply done by making a header for this .gpx file. After this we add a `<trkpt>` tag for every slice we found and fill in the corresponding data.
-To end we add a footer to the file.
+This is simply done by making a header for this .gpx file.  
+
+Then, a `<trkpt>` tag with its corresponding data is added for every slice.
+Since there is no tag for the temperature for a `<trkpt>` in a .gpx file an `<extension>` tag is used.
+This `<extension>` tag follows [Garmin’s Track Point Extension v1](https://www8.garmin.com/xmlschemas/TrackPointExtensionv1.xsd).  
+
+To end, a footer is added to the end of the .gpx file.
 This way the correct .gpx file is generated.  
 
 
