@@ -57,6 +57,8 @@ def get_datetime_from_four_bytes(values: tuple[int, int, int, int]) -> datetime:
     These integer values come from an unsigned byte, so the integer values should be between 0 and 255.
     This method converts these 4 values to a datetime and returns this datetime.
     """
+    if values == (-1, -1, -1, -1):  # This means the data was not included in the file (mode 2)
+        return datetime.now()  # The date of today will be used as a placeholder
     timestamp = values[0] * 256 * 256 * 256
     timestamp += values[1] * 256 * 256
     timestamp += values[2] * 256
@@ -70,7 +72,7 @@ def get_track_points_from_raw_track_points(raw_track_points: list[list[int]]) ->
     A raw track point is a list of 24 or 32 integer values with each integer value between 0 and 255.
     A track point is a dictionary with the following (key, value type) pairs:
     ('hour', int), ('minute', int), ('second', int), ('latitude', float), ('longitude', float), ('speed', float),
-    ('elevation', int), ('year', int | None), ('month', int | None), ('day', int | None).
+    ('elevation', int), ('year', int), ('month', int), ('day', int), ('temperature', int).
     """
     track_points = []
     for raw_track_point in raw_track_points:
@@ -95,16 +97,13 @@ def get_track_points_from_raw_track_points(raw_track_points: list[list[int]]) ->
 
         # get year, month and day
         unix_time_values = (raw_track_point[0], raw_track_point[1], raw_track_point[2], raw_track_point[3])
+        date_time = get_datetime_from_four_bytes(unix_time_values)
+        data['year'] = date_time.year
+        data['month'] = date_time.month
+        data['day'] = date_time.day
 
-        if unix_time_values[0] > -1:  # case that Unix time was present in raw track point
-            date_time = get_datetime_from_four_bytes(unix_time_values)
-            data['year'] = date_time.year
-            data['month'] = date_time.month
-            data['day'] = date_time.day
-        else:  # case that Unix time was not present in raw track point
-            data['year'] = None
-            data['month'] = None
-            data['day'] = None
+        # get temperature
+        data['temperature'] = raw_track_point[21] - 40
 
         track_points += [data]
     return track_points
@@ -115,16 +114,20 @@ def generate_gpx_text(track_points: list[dict]) -> str:
     This method creates a gpx text from the given list of track points and returns this gpx text.
     A track point is a dictionary with the following (key, value type) pairs:
     ('hour', int), ('minute', int), ('second', int), ('latitude', float), ('longitude', float), ('speed', float),
-    ('elevation', int), ('year', int | None), ('month', int | None), ('day', int | None).
+    ('elevation', int), ('year', int), ('month', int), ('day', int), ('temperature', int).
     First a header is created and added to the gpx text.
     Then for every track point in track_points a <trkpt> tag is added to the gpx text.
     At the end a footer is added to the gpx text.
     """
     # add header
     gpx_text = '<?xml version="1.0" encoding="UTF-8"?>\n' \
-               '<gpx version="1.0">\n' \
-               '<name>Example gpx</name>\n' \
-               '<trk><name>Example gpx</name><number>1</number><trkseg>\n'
+               '<gpx creator="https://github.com/stevenhgs/rib-to-gpx-file-converter" version="1.1" \n' \
+               'xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/11.xsd" \n' \
+               'xmlns:ns3="http://www.garmin.com/xmlschemas/TrackPointExtension/v1" \n' \
+               'xmlns="http://www.topografix.com/GPX/1/1" \n' \
+               'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ns2="http://www.garmin.com/xmlschemas/GpxExtensions/v3"> \n' \
+               '<trk><name>Example gpx</name>\n' \
+               '<trkseg>\n'
 
     # add track points
     for track_point in track_points:
@@ -138,17 +141,24 @@ def generate_gpx_text(track_points: list[dict]) -> str:
         year = str(track_point['year'])
         month = str(track_point['month'])
         day = str(track_point['day'])
+        temperature = str(track_point['temperature'])
 
-        track_point_text = f'<trkpt lat="{latitude}" lon="{longitude}">' \
-                           f'<ele>{elevation}</ele>' \
-                           f'<time>{year:0>2}-{month:0>2}-{day:0>2}T{hour:0>2}:{minute:0>2}:{second:0>2}Z</time>' \
-                           f'<speed>{speed}</speed>' \
-                           f'</trkpt>\n'
+        track_point_text = f'\t<trkpt lat="{latitude}" lon="{longitude}">\n' \
+                           f'\t\t<ele>{elevation}</ele>\n' \
+                           f'\t\t<time>{year:0>2}-{month:0>2}-{day:0>2}T{hour:0>2}:{minute:0>2}:{second:0>2}Z</time>\n' \
+                           f'\t\t<speed>{speed}</speed>\n' \
+                           f'\t\t<extensions>\n' \
+                           f'\t\t\t<ns3:TrackPointExtension>\n' \
+                           f'\t\t\t\t<ns3:atemp>{temperature}.0</ns3:atemp>\n' \
+                           f'\t\t\t</ns3:TrackPointExtension>\n' \
+                           f'\t\t</extensions>\n' \
+                           f'\t</trkpt>\n'
 
         gpx_text += track_point_text
 
     # add footer
-    gpx_text += '</trkseg></trk>\n' \
+    gpx_text += '</trkseg>\n' \
+                '</trk>\n' \
                 '</gpx>'
     return gpx_text
 
