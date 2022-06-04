@@ -45,7 +45,7 @@ python src/main.py --in <your relative input file path> --out <your relative out
 ```
 
 ### convert .rib to .gpx by using an IDE
-If you are used to running Python files using an IDE you can also run the `manually.py` file which is located under [src](./src).
+If you are used to running Python files using an IDE you can also run the `manually.py` file which is located under [./src](./src).
 Be sure to change the values of the `input_file_path_string` variable and the `output_file_path_string` to the correct paths.
 Change the value of the `mode_string` variable to either `'1'` or `'2'` depending on the type of smartglasses which generated the .rib file.
 
@@ -154,8 +154,8 @@ The slices are put in a column of a table to be able to analyze them easier:
 |  31   | delimiter  | 255     | 255     | 255     |
 
 #### Time
-When analyzing the data in the columns it can be seen that the values at index `6` changed by one for consecutive slices.
-This could mean that this data represented time. With the knowledge that the activity started around 8:50 the following meaning can be given to the data:
+When analyzing the data in the columns it can be seen that the values at index `6` change by one for consecutive slices.
+This could mean that this data represents time. With the knowledge that the activity started around 8:50 the following meaning can be given to the data:
 
 | Index |   Meaning    | Slice 1  | Slice 2 | Slice 3 |
 |:-----:|:------------:|----------|---------|---------|
@@ -210,10 +210,10 @@ The value at index `7` is `46` and the value at index `11` is `7` for all the th
 So this could mean that the values from index `7` to `10` represent the latitude 
 and the values from index `11` to `14` represent the longitude.  
 
-The first byte of the four bytes already seemed to represent the whole degree of a coordinate. 
+The first byte of the four bytes already seems to represent the whole degree of a coordinate. 
 For example, for the latitude, the value at index `7` is `46`, 
 which is the whole degree of the expected latitude `46.126030`.
-After some searching it was found that the three other bytes represent the minutes. 
+After some searching it was found that the three other bytes represent the minutes of the coordinate. 
 The minutes could be calculated in the following manner for the latitude:  
 
 ```python
@@ -347,8 +347,8 @@ Maybe these bytes are used as a [checksum](https://en.wikipedia.org/wiki/Checksu
 However, the data found until now is sufficient to generate a valid .gpx file.
 
 ### Generating a .gpx file
-Now that the meaning of the values is found the .gpx file can be generated.
-This is simply done by making a header for this .gpx file.  
+Now that the meaning of the values is found, the .gpx file can be generated.
+First, a header is made for this .gpx file.  
 
 Then, a `<trkpt>` tag with its corresponding data is added for every slice.
 Since there is no tag for the temperature for a `<trkpt>` in a .gpx file an `<extension>` tag is used.
@@ -358,7 +358,7 @@ To end, a footer is added to the end of the .gpx file.
 This way the correct .gpx file is generated.  
 
 
-After doing this for the `DAY90.rib` file a `DAY90.gpx` file is generated.
+After doing this for the [`DAY90.rib`](./example/DAY90.rib) file a [`DAY90.gpx`](./example/DAY90.gpx) file is generated.
 After uploading this file on this [site](https://gpx.studio/), the skiing activity tracked by the Recon Snow2 can finally be seen:
 
 <img src="./example/DAY90.jpg" width="1000">
