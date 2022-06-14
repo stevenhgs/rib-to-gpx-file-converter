@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import BinaryIO
 from pathlib import Path
 
@@ -12,6 +12,8 @@ def get_raw_track_points(file: BinaryIO, mode: int) -> list[list[int]]:
     Mode 1: track points start from the 14th index and are each 32 bytes long.
     Mode 2: track points start from the 9th index and are each 20 bytes long.
     """
+    byte_array = bytearray(file.read())
+
     if mode == 1:
         start_index = 14
         bytes_per_track_point = 32
@@ -19,9 +21,20 @@ def get_raw_track_points(file: BinaryIO, mode: int) -> list[list[int]]:
     else:  # mode 2
         start_index = 9
         bytes_per_track_point = 20
-        padding = [-1, -1, -1, -1]  # padding is added to mode 2 for missing values
+        # for devices in mode 2 the unix timestamp is not included in the data of every track point
+        # the date is only included in the first data slice, so extract it and add it to all the raw_track_points
+        year = 2000 + (byte_array[start_index] & 0x7f)
+        month = byte_array[start_index + 1]
+        day = byte_array[start_index + 2]
+        dt = datetime(year, month, day)
+        unix_time = int(dt.replace(tzinfo=timezone.utc).timestamp())
+        padding = [0, 0, 0, 0]  # padding is added to mode 2 for missing values
+        padding_size = len(padding)
+        # put the unix timestamp in the 4 bytes of the padding
+        for i in range(4):
+            padding[padding_size - i - 1] = unix_time % 256
+            unix_time //= 256
 
-    byte_array = bytearray(file.read())
     base_index = start_index
     raw_track_points = []
     while base_index + bytes_per_track_point <= len(byte_array):
@@ -57,8 +70,6 @@ def get_datetime_from_four_bytes(values: tuple[int, int, int, int]) -> datetime:
     These integer values come from an unsigned byte, so the integer values should be between 0 and 255.
     This method converts these 4 values to a datetime and returns this datetime.
     """
-    if values == (-1, -1, -1, -1):  # This means the data was not included in the file (mode 2)
-        return datetime.now()  # The date of today will be used as a placeholder
     timestamp = values[0] * 256 * 256 * 256
     timestamp += values[1] * 256 * 256
     timestamp += values[2] * 256
