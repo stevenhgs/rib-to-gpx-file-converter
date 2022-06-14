@@ -31,11 +31,6 @@ Mode `1`:
 Mode `2`:  
 * Zeal Optics Transcend
 
-(Note: goggles which create .rib files which have to be converted in mode `2`
-do not have data containing the date when the activity took place. 
-So, when converting these files to .gpx files the date when the file is converted 
-will be used as the date when the activity took place.)
-
 ### convert .rib to .gpx in a custom output path
 If you want to create a custom output path, you have to use the `--out` flag:
 
