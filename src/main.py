@@ -103,8 +103,8 @@ def get_track_points_from_raw_track_points(raw_track_points: list[list[int]]) ->
         # get elevation
         data['elevation'] = (raw_track_point[17] * 256) + raw_track_point[18]
 
-        # get speed
-        data['speed'] = ((raw_track_point[15] * 256) + raw_track_point[16]) / 10
+        # get speed (in meters per second)
+        data['speed'] = (((raw_track_point[15] * 256) + raw_track_point[16]) / 10) * (1000 / 3600)
 
         # get year, month and day
         unix_time_values = (raw_track_point[0], raw_track_point[1], raw_track_point[2], raw_track_point[3])
